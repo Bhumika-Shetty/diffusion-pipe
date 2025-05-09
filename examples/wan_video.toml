@@ -1,5 +1,5 @@
 # Output path for training runs. Each training run makes a new directory in here.
-output_dir = '/workspace/diffusion-pipe/data/output'
+output_dir = '/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/data/output'
 
 # Dataset config file.
 dataset = 'examples/dataset.toml'
@@ -11,7 +11,7 @@ dataset = 'examples/dataset.toml'
 # training settings
 
 # I usually set this to a really high value because I don't know how long I want to train.
-epochs = 1000
+epochs = 50
 # Batch size of a single forward/backward pass for one GPU.
 micro_batch_size_per_gpu = 1
 # Pipeline parallelism degree. A single instance of the model is divided across this many GPUs.
@@ -39,8 +39,8 @@ eval_gradient_accumulation_steps = 1
 # Probably want to set this a bit higher if you have a smaller dataset so you don't end up with a million saved models.
 save_every_n_epochs = 5
 # Can checkpoint the training state every n number of epochs or minutes. Set only one of these. You can resume from checkpoints using the --resume_from_checkpoint flag.
-checkpoint_every_n_epochs = 5
-#checkpoint_every_n_minutes = 120
+checkpoint_every_n_epochs = 1
+checkpoint_every_n_minutes = 20
 # Always set to true unless you have a huge amount of VRAM.
 activation_checkpointing = true
 # Controls how Deepspeed decides how to divide layers across GPUs. Probably don't change this.
@@ -62,7 +62,7 @@ video_clip_mode = 'single_middle'
 
 [model]
 type = 'wan'
-ckpt_path = '/workspace/diffusion-pipe/models/wan2.1'
+ckpt_path = '/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/models/Wan2.1-T2V-14B'
 dtype = 'bfloat16'
 timestep_sample_method = 'logit_normal'
 
@@ -83,3 +83,7 @@ lr = 2e-5
 betas = [0.9, 0.99]
 weight_decay = 0.01
 eps = 1e-8
+
+[scheduler]
+type = "WarmupLR"
+params = { warmup_min_lr = 0.0, warmup_max_lr = 2e-5, warmup_num_steps = 100 }

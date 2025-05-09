@@ -160,3 +160,8 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+/models/Wan2.1-T2V-14B
+trainig_pipeline/diffusion-pipe/data/input/cache/
+/data/input/cache/
+/data/output/
+/data/input/
