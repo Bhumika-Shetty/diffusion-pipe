@@ -18,6 +18,15 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import multiprocess as mp
 import numpy as np
+import logging
+import matplotlib.pyplot as plt
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+loss_history = []
+
 
 from utils import dataset as dataset_util
 from utils import common
@@ -239,13 +248,19 @@ if __name__ == '__main__':
     with open(config['dataset']) as f:
         dataset_config = toml.load(f)
     gradient_release = config['optimizer'].get('gradient_release', False)
+    use_bfloat16 = config['model']['dtype'] == torch.bfloat16
+
     ds_config = {
         'train_micro_batch_size_per_gpu': config.get('micro_batch_size_per_gpu', 1),
         'gradient_accumulation_steps': config.get('gradient_accumulation_steps', 1),
-        # Can't do gradient clipping with gradient release, since there are no grads at the end of the step anymore.
         'gradient_clipping': 0. if gradient_release else config.get('gradient_clipping', 1.0),
         'steps_per_print': config.get('steps_per_print', 1),
+
+        # Only enable bf16
+        'bf16': {'enabled': use_bfloat16},
+        'fp16': {'enabled': False},  # explicitly disabled as it might cause instabil
     }
+
     caching_batch_size = config.get('caching_batch_size', 1)
     dataset_manager = dataset_util.DatasetManager(model, regenerate_cache=regenerate_cache, caching_batch_size=caching_batch_size)
 
@@ -420,13 +435,17 @@ if __name__ == '__main__':
         optimizer=get_optimizer,
         config=ds_config,
     )
+    if model_engine.fp16_enabled:
+        logger.info("✅ DeepSpeed is using fp16 mixed precision.")
+    else:
+        logger.info("✅ DeepSpeed is using full precision or bf16 (if configured).")
 
-    lr_scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer, factor=1.0)
-    if config['warmup_steps'] > 0:
-        warmup_steps = config['warmup_steps']
-        warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1/warmup_steps, total_iters=warmup_steps)
-        lr_scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup_scheduler, lr_scheduler], milestones=[warmup_steps])
-    model_engine.lr_scheduler = lr_scheduler
+
+
+    logger.warning("⚠️ Skipping PyTorch LR scheduler setup — handled by DeepSpeed config.")
+    
+
+    
 
     train_data.post_init(
         model_engine.grid.get_data_parallel_rank(),
@@ -466,10 +485,7 @@ if __name__ == '__main__':
         if is_main_process():
             print(f'Resuming training from checkpoint. Resuming at epoch: {train_dataloader.epoch}, step: {step}')
 
-    if 'force_constant_lr' in config:
-        model_engine.lr_scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer, factor=1.0)
-        for pg in optimizer.param_groups:
-            pg['lr'] = config['force_constant_lr']
+    
 
     model_engine.set_dataloader(train_dataloader)
     steps_per_epoch = len(train_dataloader) // model_engine.gradient_accumulation_steps()
@@ -493,18 +509,34 @@ if __name__ == '__main__':
     epoch_loss = 0
     num_steps = 0
     while True:
-        #empty_cuda_cache()
+        # Reset activation shape for pipeline
         model_engine.reset_activation_shape()
+
+        # Training step
         loss = model_engine.train_batch().item()
+        if step % config['gradient_accumulation_steps'] == 0:
+            logger.info(f"[Step {step}] ➕ Performed optimizer step after {config['gradient_accumulation_steps']} gradient accumulation steps.")
+        else:
+            logger.info(f"[Step {step}] ⏸️ Accumulating gradients (no optimizer step yet).")
+
         epoch_loss += loss
         num_steps += 1
         train_dataloader.sync_epoch()
 
+        logger.info(f"Step: {step}, Loss: {loss:.6f}")
+        loss_history.append(loss)
+
+        allocated = torch.cuda.memory_allocated() / 1024**2
+        reserved = torch.cuda.memory_reserved() / 1024**2
+        logger.info(f"GPU Memory - Allocated: {allocated:.2f}MB, Reserved: {reserved:.2f}MB")
+
+        if tb_writer:
+            tb_writer.add_scalar('train/loss', loss, step)
+            tb_writer.add_scalar('train/gpu_memory_allocated_MB', allocated, step)
+            tb_writer.add_scalar('train/gpu_memory_reserved_MB', reserved, step)
+
         new_epoch, checkpointed, saved = saver.process_epoch(epoch, step)
         finished_epoch = True if new_epoch != epoch else False
-
-        if is_main_process() and step % config['logging_steps'] == 0:
-            tb_writer.add_scalar(f'train/loss', loss, step)
 
         if (config['eval_every_n_steps'] and step % config['eval_every_n_steps'] == 0) or (finished_epoch and config['eval_every_n_epochs'] and epoch % config['eval_every_n_epochs'] == 0):
             evaluate(model_engine, eval_dataloaders, tb_writer, step, config['eval_gradient_accumulation_steps'])
@@ -528,4 +560,19 @@ if __name__ == '__main__':
         saver.save_model(f'epoch{epoch}')
 
     if is_main_process():
+        
+        # Plot training loss
+        plt.figure()
+        plt.plot(loss_history, label='Training Loss')
+        plt.xlabel('Step')
+        plt.ylabel('Loss')
+        plt.title('Training Loss Curve')
+        plt.legend()
+        plt.grid(True)
+        plot_path = os.path.join(run_dir, 'training_loss_plot.png')
+        plt.savefig(plot_path)
+        logger.info(f"Saved training loss plot to {plot_path}")
+
         print('TRAINING COMPLETE!')
+
+

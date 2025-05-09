@@ -1,5 +1,5 @@
 # Output path for training runs. Each training run makes a new directory in here.
-output_dir = '/app/AdFame/trainig_pipeline/diffusion-pipe/data/output'
+output_dir = '/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/data/output'
 
 # Dataset config file.
 dataset = 'examples/dataset.toml'
@@ -62,7 +62,7 @@ video_clip_mode = 'single_middle'
 
 [model]
 type = 'wan'
-ckpt_path = '/app/AdFame/trainig_pipeline/diffusion-pipe/models/Wan2.1-T2V-14B'
+ckpt_path = '/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/models/Wan2.1-T2V-14B'
 dtype = 'bfloat16'
 timestep_sample_method = 'logit_normal'
 
@@ -83,3 +83,7 @@ lr = 2e-5
 betas = [0.9, 0.99]
 weight_decay = 0.01
 eps = 1e-8
+
+[scheduler]
+type = "WarmupLR"
+params = { warmup_min_lr = 0.0, warmup_max_lr = 2e-5, warmup_num_steps = 100 }
