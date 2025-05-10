@@ -1,0 +1,15 @@
+artifact_uri: /home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/mlruns/408713857097559210/4a086c2b3ca34e0d88982d6580150589/artifacts
+end_time: 1746854630005
+entry_point_name: ''
+experiment_id: '408713857097559210'
+lifecycle_stage: active
+run_id: 4a086c2b3ca34e0d88982d6580150589
+run_name: persistent-panda-37
+run_uuid: 4a086c2b3ca34e0d88982d6580150589
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1746854010124
+status: 3
+tags: []
+user_id: cc

@@ -2,7 +2,8 @@
 output_dir = '/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/data/output'
 
 # Dataset config file.
-dataset = 'examples/dataset.toml'
+dataset = '/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/examples/dataset.toml'
+
 # You can have separate eval datasets. Give them a name for Tensorboard metrics.
 # eval_datasets = [
 #     {name = 'something', config = 'path/to/eval_dataset.toml'},
@@ -11,7 +12,7 @@ dataset = 'examples/dataset.toml'
 # training settings
 
 # I usually set this to a really high value because I don't know how long I want to train.
-epochs = 50
+epochs = 10
 # Batch size of a single forward/backward pass for one GPU.
 micro_batch_size_per_gpu = 1
 # Pipeline parallelism degree. A single instance of the model is divided across this many GPUs.

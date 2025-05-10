@@ -1,0 +1,15 @@
+artifact_uri: /home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/mlruns/408713857097559210/d78ed6c112c94a16be6bd5e5a60407f1/artifacts
+end_time: 1746849762467
+entry_point_name: ''
+experiment_id: '408713857097559210'
+lifecycle_stage: active
+run_id: d78ed6c112c94a16be6bd5e5a60407f1
+run_name: clean-frog-887
+run_uuid: d78ed6c112c94a16be6bd5e5a60407f1
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1746849147792
+status: 3
+tags: []
+user_id: cc

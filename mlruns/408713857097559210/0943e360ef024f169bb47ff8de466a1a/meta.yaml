@@ -1,0 +1,15 @@
+artifact_uri: /home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/mlruns/408713857097559210/0943e360ef024f169bb47ff8de466a1a/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '408713857097559210'
+lifecycle_stage: active
+run_id: 0943e360ef024f169bb47ff8de466a1a
+run_name: calm-cub-748
+run_uuid: 0943e360ef024f169bb47ff8de466a1a
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1746851658727
+status: 1
+tags: []
+user_id: cc

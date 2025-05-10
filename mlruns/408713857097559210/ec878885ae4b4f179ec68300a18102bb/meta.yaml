@@ -1,0 +1,15 @@
+artifact_uri: /home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/mlruns/408713857097559210/ec878885ae4b4f179ec68300a18102bb/artifacts
+end_time: 1746848193243
+entry_point_name: ''
+experiment_id: '408713857097559210'
+lifecycle_stage: active
+run_id: ec878885ae4b4f179ec68300a18102bb
+run_name: caring-smelt-775
+run_uuid: ec878885ae4b4f179ec68300a18102bb
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1746848158004
+status: 3
+tags: []
+user_id: cc

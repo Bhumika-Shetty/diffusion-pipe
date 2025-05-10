@@ -1,0 +1,15 @@
+artifact_uri: /home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/mlruns/408713857097559210/406ae2efa92d4a728767aca116d34c1e/artifacts
+end_time: 1746848713254
+entry_point_name: ''
+experiment_id: '408713857097559210'
+lifecycle_stage: active
+run_id: 406ae2efa92d4a728767aca116d34c1e
+run_name: clumsy-penguin-747
+run_uuid: 406ae2efa92d4a728767aca116d34c1e
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1746848404460
+status: 3
+tags: []
+user_id: cc

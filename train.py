@@ -20,6 +20,12 @@ import multiprocess as mp
 import numpy as np
 import logging
 import matplotlib.pyplot as plt
+import  mlflow
+import psutil
+import subprocess
+from ray.train.torch import TorchTrainer
+from ray.train import ScalingConfig, Checkpoint
+from ray import train, init
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -184,7 +190,9 @@ def evaluate(model_engine, eval_dataloaders, tb_writer, step, eval_gradient_accu
         _evaluate(model_engine, eval_dataloaders, tb_writer, step, eval_gradient_accumulation_steps)
 
 
-if __name__ == '__main__':
+def train_func(ray_config):
+    args = ray_config["args"]
+    config = ray_config["toml_config"]
     apply_patches()
 
     # needed for broadcasting Queue in dataset.py
@@ -302,6 +310,13 @@ if __name__ == '__main__':
     # if this is a new run, create a new dir for it
     if not resume_from_checkpoint and is_main_process():
         run_dir = os.path.join(config['output_dir'], datetime.now(timezone.utc).strftime('%Y%m%d_%H-%M-%S'))
+        if is_main_process():
+            mlflow.set_tracking_uri("/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/mlruns")  # or any clean path
+            mlflow.set_experiment("wan-diffusion")
+            logger.info(f"Tracking URI: {mlflow.get_tracking_uri()}")
+            logger.info(f"Experiment: {mlflow.get_experiment_by_name('wan-diffusion')}")
+
+
         os.makedirs(run_dir, exist_ok=True)
         shutil.copy(args.config, run_dir)
     # wait for all processes then get the most recent dir (may have just been created)
@@ -499,13 +514,25 @@ if __name__ == '__main__':
     }
 
     epoch = train_dataloader.epoch
-    tb_writer = SummaryWriter(log_dir=run_dir) if is_main_process() else None
+    tb_log_dir = os.path.join(run_dir, "tb_logs")
+    tb_writer = SummaryWriter(log_dir=tb_log_dir) if is_main_process() else None
+
     saver = utils.saver.Saver(args, config, is_adapter, run_dir, model, train_dataloader, model_engine, pipeline_model)
 
     if config['eval_before_first_step'] and not resume_from_checkpoint:
         evaluate(model_engine, eval_dataloaders, tb_writer, 0, config['eval_gradient_accumulation_steps'])
 
     # TODO: this is state we need to save and resume when resuming from checkpoint. It only affects logging.
+    if is_main_process():
+        mlflow.start_run()
+        mlflow.log_param("learning_rate", config["optimizer"]["lr"])
+        mlflow.log_param("batch_size", config["micro_batch_size_per_gpu"])
+        mlflow.log_param("epochs", config["epochs"])
+        mlflow.log_param("model", config["model"]["type"])
+        mlflow.log_param("precision", config["model"]["dtype"])
+    if config.get("adapter"):
+        mlflow.log_param("lora_rank", config["adapter"].get("rank"))
+
     epoch_loss = 0
     num_steps = 0
     while True:
@@ -530,10 +557,33 @@ if __name__ == '__main__':
         reserved = torch.cuda.memory_reserved() / 1024**2
         logger.info(f"GPU Memory - Allocated: {allocated:.2f}MB, Reserved: {reserved:.2f}MB")
 
-        if tb_writer:
+        if is_main_process():
             tb_writer.add_scalar('train/loss', loss, step)
+            mlflow.log_metric('loss', loss, step=step)
+            mlflow.log_metric('gpu_memory_allocated_MB', allocated, step=step)
+            mlflow.log_metric('gpu_memory_reserved_MB', reserved, step=step)
+
+            if step % 10 == 0:
+                import psutil, subprocess
+                mlflow.log_metric("cpu_percent", psutil.cpu_percent(), step=step)
+                mlflow.log_metric("ram_used_MB", psutil.virtual_memory().used / 1024 / 1024, step=step)
+
+                try:
+                    result = subprocess.run(
+                        ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,nounits,noheader"],
+                        capture_output=True, text=True, check=True
+                    )
+                    gpu_mem = int(result.stdout.strip().split("\n")[0])
+                    mlflow.log_metric("gpu_used_MB", gpu_mem, step=step)
+                except Exception as e:
+                    logger.warning(f"Could not log GPU usage: {e}")
+
+
+            
+
             tb_writer.add_scalar('train/gpu_memory_allocated_MB', allocated, step)
             tb_writer.add_scalar('train/gpu_memory_reserved_MB', reserved, step)
+
 
         new_epoch, checkpointed, saved = saver.process_epoch(epoch, step)
         finished_epoch = True if new_epoch != epoch else False
@@ -572,8 +622,46 @@ if __name__ == '__main__':
         plot_path = os.path.join(run_dir, 'training_loss_plot.png')
         plt.savefig(plot_path)
         logger.info(f"Saved training loss plot to {plot_path}")
+        mlflow.log_artifact(plot_path)
+        checkpoint_path = os.path.join(run_dir, f'epoch{epoch}')
+        if os.path.exists(checkpoint_path):
+            mlflow.log_artifact(checkpoint_path)
+            from ray.train import Checkpoint
+            checkpoint = Checkpoint.from_directory(run_dir)
+            train.report({"final_loss": loss_history[-1]}, checkpoint=checkpoint)   
+        mlflow.end_run()
+
 
         print('TRAINING COMPLETE!')
 
+if __name__ == "__main__":
+    import toml
+    from argparse import Namespace
+
+    args = Namespace(
+        config="/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/examples/wan_video.toml",
+        local_rank=0,
+        resume_from_checkpoint=None,
+        regenerate_cache=None,
+        cache_only=False,
+        i_know_what_i_am_doing=False
+    )
+
+    with open(args.config) as f:
+        toml_config = toml.load(f)
+
+    ray_config = {
+        "args": args,
+        "toml_config": toml_config
+    }
+
+    init(ignore_reinit_error=True, log_to_driver=True)
+
+    trainer = TorchTrainer(
+        train_loop_per_worker=train_func,
+        train_loop_config=ray_config,
+        scaling_config=ScalingConfig(num_workers=1, use_gpu=True),
+    )
+    result = trainer.fit()
 
 # Increment the version number of the model.

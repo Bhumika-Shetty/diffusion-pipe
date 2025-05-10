@@ -1,0 +1,15 @@
+artifact_uri: /home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/mlruns/408713857097559210/b088c819b0b44f26ab12228c2c72a06f/artifacts
+end_time: 1746855782778
+entry_point_name: ''
+experiment_id: '408713857097559210'
+lifecycle_stage: active
+run_id: b088c819b0b44f26ab12228c2c72a06f
+run_name: polite-boar-11
+run_uuid: b088c819b0b44f26ab12228c2c72a06f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1746855164731
+status: 3
+tags: []
+user_id: cc
