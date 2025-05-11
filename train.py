@@ -43,17 +43,17 @@ from utils.patches import apply_patches
 
 TIMESTEP_QUANTILES_FOR_EVAL = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--config', help='Path to TOML configuration file.')
-parser.add_argument('--local_rank', type=int, default=-1,
-                    help='local rank passed from distributed launcher')
-parser.add_argument('--resume_from_checkpoint', nargs='?', const=True, default=None,
-                    help='resume training from checkpoint. If no value is provided, resume from the most recent checkpoint. If a folder name is provided, resume from that specific folder.')
-parser.add_argument('--regenerate_cache', action='store_true', default=None, help='Force regenerate cache. Useful if none of the files have changed but their contents have, e.g. modified captions.')
-parser.add_argument('--cache_only', action='store_true', default=None, help='Cache model inputs then exit.')
-parser.add_argument('--i_know_what_i_am_doing', action='store_true', default=None, help="Skip certain checks and overrides. You may end up using settings that won't work.")
-parser = deepspeed.add_config_arguments(parser)
-args = parser.parse_args()
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--config', help='Path to TOML configuration file.')
+# parser.add_argument('--local_rank', type=int, default=-1,
+#                     help='local rank passed from distributed launcher')
+# parser.add_argument('--resume_from_checkpoint', nargs='?', const=True, default=None,
+#                     help='resume training from checkpoint. If no value is provided, resume from the most recent checkpoint. If a folder name is provided, resume from that specific folder.')
+# parser.add_argument('--regenerate_cache', action='store_true', default=None, help='Force regenerate cache. Useful if none of the files have changed but their contents have, e.g. modified captions.')
+# parser.add_argument('--cache_only', action='store_true', default=None, help='Cache model inputs then exit.')
+# parser.add_argument('--i_know_what_i_am_doing', action='store_true', default=None, help="Skip certain checks and overrides. You may end up using settings that won't work.")
+# parser = deepspeed.add_config_arguments(parser)
+# args = parser.parse_args()
 
 #ABC
 # Monkeypatch this so it counts all layer parameters, not just trainable parameters.
@@ -311,7 +311,7 @@ def train_func(ray_config):
     if not resume_from_checkpoint and is_main_process():
         run_dir = os.path.join(config['output_dir'], datetime.now(timezone.utc).strftime('%Y%m%d_%H-%M-%S'))
         if is_main_process():
-            mlflow.set_tracking_uri("/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/mlruns")  # or any clean path
+            mlflow.set_tracking_uri("/app/AdFame/trainig_pipeline/diffusion-pipe/mlruns")  # or any clean path
             mlflow.set_experiment("wan-diffusion")
             logger.info(f"Tracking URI: {mlflow.get_tracking_uri()}")
             logger.info(f"Experiment: {mlflow.get_experiment_by_name('wan-diffusion')}")

@@ -1,9 +1,8 @@
 # Output path for training runs. Each training run makes a new directory in here.
-output_dir = '/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/data/output'
+output_dir = '/app/AdFame/trainig_pipeline/diffusion-pipe/data/output'
 
 # Dataset config file.
-dataset = '/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/examples/dataset.toml'
-
+dataset = '/app/AdFame/trainig_pipeline/diffusion-pipe/examples/dataset.toml'
 # You can have separate eval datasets. Give them a name for Tensorboard metrics.
 # eval_datasets = [
 #     {name = 'something', config = 'path/to/eval_dataset.toml'},
@@ -63,7 +62,7 @@ video_clip_mode = 'single_middle'
 
 [model]
 type = 'wan'
-ckpt_path = '/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/models/Wan2.1-T2V-14B'
+ckpt_path = '/app/AdFame/trainig_pipeline/diffusion-pipe/models/Wan2.1-T2V-14B'
 dtype = 'bfloat16'
 timestep_sample_method = 'logit_normal'
 
