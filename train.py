@@ -311,10 +311,21 @@ def train_func(ray_config):
     if not resume_from_checkpoint and is_main_process():
         run_dir = os.path.join(config['output_dir'], datetime.now(timezone.utc).strftime('%Y%m%d_%H-%M-%S'))
         if is_main_process():
-            mlflow.set_tracking_uri("/app/AdFame/trainig_pipeline/diffusion-pipe/mlruns")  # or any clean path
+            # 1. Remote MLflow tracking
+            mlflow.set_tracking_uri("http://mlflow:8000")
             mlflow.set_experiment("wan-diffusion")
-            logger.info(f"Tracking URI: {mlflow.get_tracking_uri()}")
-            logger.info(f"Experiment: {mlflow.get_experiment_by_name('wan-diffusion')}")
+            logger.info(f"✅ MLflow remote tracking: {mlflow.get_tracking_uri()}")
+
+            experiment = mlflow.get_experiment_by_name("wan-diffusion")
+            assert experiment is not None, "Experiment 'wan-diffusion' not found. Check MLflow server."
+            logger.info(f"✅ Found experiment: {experiment.experiment_id}")
+
+            # 2. Local fallback directory (used for copying logs manually if needed)
+            local_fallback_dir = "/app/AdFame/trainig_pipeline/diffusion-pipe/mlruns"
+            os.makedirs(local_fallback_dir, exist_ok=True)
+            logger.info(f"🗃️ Local fallback directory ready at: {local_fallback_dir}")
+
+
 
 
         os.makedirs(run_dir, exist_ok=True)
@@ -594,6 +605,12 @@ def train_func(ray_config):
         if finished_epoch:
             if is_main_process():
                 tb_writer.add_scalar(f'train/epoch_loss', epoch_loss/num_steps, epoch)
+                
+                from safetensors.torch import save_file
+                model_path = os.path.join(run_dir, f"epoch{epoch}.safetensors")
+                save_file(model_engine.module.state_dict(), model_path)
+                mlflow.log_artifact(model_path)
+                logger.info(f"✅ Saved safetensors model at {model_path}")
             epoch_loss = 0
             num_steps = 0
             epoch = new_epoch

@@ -2,25 +2,22 @@ import ray
 import os
 import toml
 import argparse
-from ray import init, remote
 from ray.train import ScalingConfig
 from ray.train.torch import TorchTrainer
-from train import train_func  # your existing train.py must expose this
+from train import train_func
 
 # Set NCCL flags (equivalent to your shell command)
 os.environ["NCCL_P2P_DISABLE"] = "1"
 os.environ["NCCL_IB_DISABLE"] = "1"
+os.environ.pop("RAY_ADDRESS", None)  # force Ray to run in local mode
 
-init(ignore_reinit_error=True, log_to_driver=True)
+# Initialize Ray in local mode (not client mode)
+ray.init(ignore_reinit_error=True, log_to_driver=True, dashboard_host="0.0.0.0")
+#ray.init(address="auto", namespace="default")
+#ray.init(address="ray-head:6379", namespace="default")
 
-@remote
 def launch_training(resume_from_checkpoint=None):
-    # config_path = "examples/wan_video.toml"
-    # config_path = os.path.abspath("examples/wan_video.toml")
     config_path = "/app/AdFame/trainig_pipeline/diffusion-pipe/examples/wan_video.toml"
-    # config_path = "/home/cc/bhumi/AdFame/trainig_pipeline/diffusion-pipe/examples/wan_video.toml"
-
-
     toml_config = toml.load(config_path)
 
     args = argparse.Namespace(
@@ -42,8 +39,7 @@ def launch_training(resume_from_checkpoint=None):
         train_loop_config=ray_config,
         scaling_config=ScalingConfig(
             num_workers=1,
-            use_gpu=True,
-            resources_per_worker={"CPU": 32, "GPU": 1}
+            use_gpu=True
         ),
     )
 
@@ -63,14 +59,13 @@ if __name__ == "__main__":
     output_dir = toml.load(config_path)["output_dir"]
 
     if choice == "train":
-        ray.get(launch_training.remote(resume_from_checkpoint=None))
+        launch_training(resume_from_checkpoint=None)
 
     elif choice == "retrain":
         latest_ckpt = find_latest_checkpoint(output_dir)
         if latest_ckpt:
             print(f"📦 Found checkpoint: {latest_ckpt}")
-            ray.get(launch_training.remote(resume_from_checkpoint=latest_ckpt))
-
+            launch_training(resume_from_checkpoint=latest_ckpt)
         else:
             print("❌ No valid checkpoint found in output directory.")
 
